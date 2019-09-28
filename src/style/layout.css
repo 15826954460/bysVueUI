@@ -1,0 +1,41 @@
+.nrepeat {
+  background: no-repeat;
+}
+
+.tsp {
+  background: transparent;
+}
+
+.rel {
+  position: relative;
+}
+
+.abs {
+  position: absolute;
+}
+
+.fix {
+  position: fixed;
+}
+
+.deb {
+  background: rgba(245, 245, 245, 1);
+}
+
+.vh100 {
+  min-height: 100vh;
+}
+
+.vw100 {
+  width: 100vw;
+}
+
+.vh100 {
+  height: 100vh;
+}
+
+.flex {
+  display: -webkit-flex;
+  /* Safari */
+  display: flex;
+}
