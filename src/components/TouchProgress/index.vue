@@ -1,14 +1,21 @@
 
 <template>
   <div ref="progressbg" class="touch-container" :style="{...touchBoxStyle}">
-    <div ref="dotEl" class="dot transformY" :style="{...dotStyle, left: pcocessNumber + '%'}"></div>
-    <div class="process" :style="{...processStyle, width: pcocessNumber + '%'}"></div>
+    <div
+      ref="dotEl"
+      class="dot transformY"
+      :style="{...dotStyle, left: Math.min(maxTransform, pcocessNumber) + '%'}"
+    ></div>
+    <div
+      class="process"
+      :style="{...processStyle, width:  Math.min(maxTransform, pcocessNumber) + '%'}"
+    ></div>
   </div>
 </template>
 
 <script>
 export default {
-  name: 'TouchProgress',
+  name: "TouchProgress",
   props: {
     pcocessNumber: {
       type: Number,
@@ -30,6 +37,8 @@ export default {
   components: {},
   data() {
     return {
+      criticalPoint: 0, // 临界偏移
+      maxTransform: 0,
       processWith: 0,
       dotWidth: 0,
       isTouch: "ontouchstart" in window,
@@ -53,6 +62,9 @@ export default {
     _getProcessW() {
       this.processWith = this.$refs.progressbg.offsetWidth;
       this.dotWidth = this.$refs.dotEl.offsetWidth;
+      this.criticalPoint = this.processWith - this.dotWidth;
+      this.maxTransform =
+        ((this.processWith - this.dotWidth) / this.processWith) * 100;
     },
     _getBoundingClientRect() {
       this.processRect = this.$refs.progressbg.getBoundingClientRect();
@@ -81,7 +93,6 @@ export default {
       this.touchStatus.isTouchMove = true;
       let endx = e.changedTouches[0].pageX;
       endx = Math.max(0, endx - this.processRect.x);
-      this._calDotPos(endx);
       this.$emit("change", this._calDotPos(endx));
     },
     _touchEnd(e) {
@@ -93,13 +104,12 @@ export default {
       endx = Math.max(0, endx - this.processRect.x);
       this.$emit("change", this._calDotPos(endx));
     },
-    _calDotPos(endx, type) {
-      let val =
-        (
-          Math.min(endx, this.processWith - this.dotWidth) / this.processWith
-        ).toFixed(2) * 100;
-      type && console.log(val);
-      return val;
+    _calDotPos(endx) {
+      endx = (endx >= this.criticalPoint ? this.processWith : endx);
+      let val = String(
+        (Math.min(endx, this.processWith) / this.processWith) * 100
+      ).split(".")[0];
+      return Number(val);
     },
     _touchCancel(e) {
       this._preventDefaultEnent(e);

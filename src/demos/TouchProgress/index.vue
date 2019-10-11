@@ -1,6 +1,7 @@
 <template>
   <div class="touch-progress-container vw100 vh100 ">
     <p class="intro-text">手动撸一个移动端进度条 <br> 支持点击和拖拽</p>
+    <p>当前百分比为： {{pcocessNumber}} </p>
     <div class="touch-com-wrapper flex ccc">
        <TouchProgress @change="getTouchProgress" :pcocessNumber="pcocessNumber"></TouchProgress>
     </div>
