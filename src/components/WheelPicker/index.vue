@@ -35,16 +35,16 @@
 
 <script>
 export default {
-  name: "wheelpicker",
+  name: "WheelPicker",
   props: {
     data: {
       type: Array,
       default: () => []
     },
-    // change: {
-    //   type: Function,
-    //   default: () => {}
-    // }
+    change: {
+      type: Function,
+      default: () => {}
+    }
   },
   data() {
     return {
@@ -307,7 +307,7 @@ export default {
           movedIndex = Math.round(movedIndex);
           this.$set(this.currentIndexList, gIndex, movedIndex);
           if (movedIndex !== this.lastCurrentIndexList[gIndex]) {
-            this.$emit("change", { gIndex, movedIndex });
+            this.change(gIndex, movedIndex);
           }
           this.lastCurrentIndexList = [].concat(this.currentIndexList);
         }

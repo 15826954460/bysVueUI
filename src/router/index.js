@@ -13,9 +13,14 @@ export default new Router({
       component: () => import(/* webpackChunkName: "about" */ '@/views/index.vue')
     },
     {
-      path: '/',
+      path: '/touchprogress',
       name: 'touchprogress',
       component: () => import(/* webpackChunkName: "about" */ '@/demos/TouchProgress/index.vue')
+    },
+    {
+      path: '/',
+      name: 'wheelpicker',
+      component: () => import(/* webpackChunkName: "about" */ '@/demos/WheelPicker/index.vue')
     }
   ]
 })
