@@ -19,9 +19,9 @@
 
     <!-- 透明层 -->
     <div ref="smoothHandleLayer" class="smooth-handle-layer">
-      <div data-type="top" class="smooth-top flex-1"></div>
-      <div data-type="middle" class="smooth-middle"></div>
-      <div data-type="bottom" class="smooth-bottom flex-1"></div>
+      <div data-type="top" class="smooth-top flex-1" :style="{...topStyle}"></div>
+      <div data-type="middle" class="smooth-middle" :style="{...middleStyle}"></div>
+      <div data-type="bottom" class="smooth-bottom flex-1" :style="{...bottomStyle}"></div>
     </div>
   </div>
 </template>
@@ -37,6 +37,24 @@ export default {
     change: {
       type: Function,
       default: () => {}
+    },
+    topStyle: {
+      type: Object,
+      default: function() {
+        return {}
+      }
+    },
+    middleStyle: {
+      type: Object,
+      default: function() {
+        return {}
+      }
+    },
+    bottomStyle: {
+      type: Object,
+      default: function() {
+        return {}
+      }
     }
   },
   data() {

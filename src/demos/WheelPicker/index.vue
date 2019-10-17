@@ -5,10 +5,9 @@
       <br />支持年月日
     </p>
     <p class="text">当日期为： {{ dateVal }}</p>
-    <WheelPicker ref="wheelpicker" @change="change" type="month"/>
+    <WheelPicker ref="wheelpicker" @change="change" type="month" :startYear="1950"/>
   </div>
 </template>
-
 <script>
 import WheelPicker from "@/components/WheelPicker/index.vue";
 export default {
@@ -35,7 +34,6 @@ export default {
 .container {
   width: 100%;
   height: 100vh;
-  background: pink;
 }
 .intro-text {
   left: 50%;

@@ -2,10 +2,10 @@
   <transition name="wheelselect">
     <div class="wheel-select-wrapper">
       <p class="wheel-title flex rsbc">
-        <span class="btn-cancel btn" @click.stop="cancel">cacel</span>
-         <span class="btn-done btn" @click.stop="done">done</span>
+        <span class="btn-cancel btn" @click.stop="cancel">{{textObj.cancel}}</span>
+         <span class="btn-done btn" @click.stop="done">{{textObj.done}}</span>
       </p>
-      <DataPicker ref="smoothPicker" :arrList="initWheelList()" :change="change"></DataPicker>
+      <DataPicker ref="smoothPicker" :arrList="initWheelList()" :change="change" :topStyle="topStyle" :middleStyle="middleStyle" :bottomStyle="bottomStyle"></DataPicker>
     </div>
   </transition>
 </template>
@@ -26,7 +26,31 @@ export default {
     type: {
       type: String,
       default: 'day'
-    }
+    },
+    topStyle: {
+      type: Object,
+      default: function() {
+        return { background: 'linear-gradient(180deg, rgba(95, 221, 113, 0.01) 0%, rgba(87, 211, 166, 0.01) 100%)' }
+      }
+    },
+    middleStyle: {
+      type: Object,
+      default: function() {
+        return {}
+      }
+    },
+    bottomStyle: {
+      type: Object,
+      default: function() {
+        return { background: 'linear-gradient(180deg, rgba(95, 221, 113, 0.01) 0%, rgba(87, 211, 166, 0.01) 100%)' }
+      }
+    },
+    textObj: {
+      type: Object,
+      default: function() {
+        return { cancel: 'cancel', done: 'done' }
+      }
+    },
   },
   components: {
     DataPicker
@@ -133,7 +157,7 @@ export default {
     },
     cearteYearList() {
       let _yearList = [];
-      let _startYear = 1950;
+      let _startYear = this.startYear;
       let _currentYear = CurrentYear;
       while (_startYear <= _currentYear) {
         _yearList.push({ value: _startYear });
