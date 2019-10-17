@@ -5,7 +5,7 @@
       <br />支持年月日
     </p>
     <p class="text">当日期为： {{ dateVal }}</p>
-    <WheelPicker ref="wheelpicker" @change="change"/>
+    <WheelPicker ref="wheelpicker" @change="change" type="month"/>
   </div>
 </template>
 

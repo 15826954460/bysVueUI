@@ -87,9 +87,9 @@ export default {
       this.dayValue = CurrentDay;
       if (this.wheelListLen === 2) {
         this.date = `${this.yearValue} / ${this.monthValue}`
-        return;
+      } else {
+        this.date = `${this.yearValue} / ${this.monthValue} / ${this.dayValue}`;
       }
-      this.date = `${this.yearValue} / ${this.monthValue} / ${this.dayValue}`;
       this.$emit('change', this.date);
     },
     cancel() {
@@ -98,9 +98,9 @@ export default {
     done() {
       if (this.wheelListLen === 2) {
         this.date = `${this.yearValue} / ${this.monthValue}`
-        return;
+      } else {
+        this.date = `${this.yearValue} / ${this.monthValue} / ${this.dayValue}`;
       }
-      this.date = `${this.yearValue} / ${this.monthValue} / ${this.dayValue}`;
       this.$emit('change', this.date);
     },
     change(gIndex, iIndex) {

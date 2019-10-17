@@ -9,13 +9,6 @@
     >
       <div class="smooth-list">
         <div
-          v-if="group.divider"
-          class="smooth-item divider"
-          :style="{...group.itemStyle}"
-        >{{ group.text }}</div>
-
-        <div
-          v-else
           v-for="(item, iIndex) in group.list"
           :key="iIndex"
           class="smooth-item"
@@ -274,8 +267,7 @@ export default {
       }
       const gIndex = this.dragInfo.groupIndex;
       if (
-        typeof gIndex === "number" &&
-        (this.arrList[gIndex].divider || !this.arrList[gIndex].list)
+        typeof gIndex === "number" && !this.arrList[gIndex].list
       ) {
         return;
       }
@@ -294,7 +286,6 @@ export default {
       let timer = setTimeout(() => {
         if (
           typeof gIndex === "number" &&
-          this.arrList[gIndex].divider !== true &&
           this.arrList[gIndex].list.length > 0
         ) {
           const unsafeGroupIndex = this.currentIndexList[gIndex];
