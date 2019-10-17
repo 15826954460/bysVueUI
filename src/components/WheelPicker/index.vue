@@ -1,431 +1,242 @@
 <template>
-  <div class="smooth-picker flex">
-    <div
-      ref="smoothGroup"
-      v-for="(group, gIndex) in data"
-      :key="gIndex"
-      class="smooth-group"
-      :style="{flex: 1, ...group.boxStyle}"
-    >
-      <div class="smooth-list">
-        <div
-          v-if="group.divider"
-          class="smooth-item divider"
-          :style="{...group.itemStyle}"
-        >{{ group.text }}</div>
-
-        <div
-          v-else
-          v-for="(item, iIndex) in group.list"
-          :key="iIndex"
-          class="smooth-item"
-          :style="{...group.itemStyle, ..._getItemStyle(gIndex, iIndex)}"
-        >{{ item.value || item }}</div>
-      </div>
+  <transition name="wheelselect">
+    <div class="wheel-select-wrapper">
+      <p class="wheel-title flex rsbc">
+        <span class="btn-cancel btn" @click.stop="cancel">cacel</span>
+         <span class="btn-done btn" @click.stop="done">done</span>
+      </p>
+      <DataPicker ref="smoothPicker" :arrList="initWheelList()" :change="change"></DataPicker>
     </div>
-
-    <!-- 透明层 -->
-    <div ref="smoothHandleLayer" class="smooth-handle-layer">
-      <div data-type="top" class="smooth-top flex-1"></div>
-      <div data-type="middle" class="smooth-middle"></div>
-      <div data-type="bottom" class="smooth-bottom flex-1"></div>
-    </div>
-  </div>
+  </transition>
 </template>
 
 <script>
+import DataPicker from "@/components/WheelPicker/picker.vue";
+const MouthList = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+const CurrentYear = new Date().getFullYear();
+const CurrnetMonth = new Date().getMonth();
+const CurrentDay = new Date().getDate();
 export default {
-  name: "WheelPicker",
+  name: "Picker",
   props: {
-    data: {
-      type: Array,
-      default: () => []
+    startYear: {
+      type: [ Number, String ],
+      default: 1950,
     },
-    change: {
-      type: Function,
-      default: () => {}
+    type: {
+      type: String,
+      default: 'day'
     }
+  },
+  components: {
+    DataPicker
   },
   data() {
     return {
-      gIndex: 0,
-      iIndex: 0,
-      currentIndexList: this._getInitialCurrentIndexList(),
-      lastCurrentIndexList: [],
-      groupsRectList: new Array(this.data.length), // 保存元素相关位置信息列表
-      dragInfo: {
-        isTouchable: "ontouchstart" in window,
-        isMouseDown: false,
-        isDragging: false,
-        groupIndex: null,
-        startPageY: null
-      },
-      supInfo: {
-        getRectTimeoutId: null,
-        lastStyleDisplay: null,
-        watchDomObserver: null
-      }
+      yearValue: "",
+      monthValue: "",
+      dayValue: "",
+      date: "",
+      wheelList: [
+        {
+          boxStyle: {},
+          itemStyle: {},
+          currentIndex: this.cearteYearList().length - 1,
+          list: this.cearteYearList() // 创建年 
+        },
+        {
+          boxStyle: {},
+          itemStyle: {},
+          currentIndex: new Date().getMonth(),
+          list: this.createMouth() // 创建月份  
+        },
+        {
+          boxStyle: {},
+          itemStyle: {},
+          currentIndex: new Date().getDate() - 1,
+          list: this.createDay() // 根据月份创建天 
+        }
+      ]
     };
   },
-  mounted() {
-    this._eventsRegister();
-    this.$nextTick(this.getGroupsRectList());
-    this.supInfo.watchDomObserver = this._createDomObserver();
-    this.supInfo.watchDomObserver.observe(this.$el, { attributes: true });
-    window.addEventListener("resize", this._safeGetGroupRectList);
+  computed: {
+    wheelListLen() {
+      let _len = 3;
+      if (this.type === 'month') {
+        _len = 2;
+      }
+      return _len;
+    },
   },
-  destroyed() {
-    this.supInfo.watchDomObserver.disconnect();
-    window.removeEventListener("resize", this._safeGetGroupRectList);
+  mounted() {
+    this.initDate();
   },
   methods: {
-    // 对外暴露的方法
-    getCurrentIndexList() {
-      return this.currentIndexList;
-    },
-    // 对外暴露的方法
-    setGroupData(gIndex, groupData) {
-      const iCI = groupData.currentIndex;
-      let movedIndex = 0;
-      if (
-        typeof iCI === "number" &&
-        iCI >= 0 &&
-        groupData.list &&
-        groupData.list.length &&
-        iCI <= groupData.list.length - 1
-      ) {
-        movedIndex = Math.round(iCI);
+    initWheelList() {
+      let _wheelList = [];
+      if (this.type === 'month') {
+        _wheelList = this.wheelList.slice(0, this.wheelList.length - 1);
+      } else {
+        _wheelList = this.wheelList;
       }
-      this.currentIndexList[gIndex] = movedIndex;
-      this.lastCurrentIndexList = [].concat(this.currentIndexList);
-      this._safeGetGroupRectList();
-      this.$set(this.data, gIndex, groupData);
+      return _wheelList;
     },
-    // 对外暴露的方法
-    getGroupsRectList() {
-      if (this.$refs.smoothGroup) {
-        this.$refs.smoothGroup.forEach((item, index) => {
-          this.groupsRectList[index] = item.getBoundingClientRect();
-        });
-      }
-    },
-    // 初始化当前下标的列表
-    _getInitialCurrentIndexList() {
-      return this.data.map((item, index) => {
-        const iCI = item.currentIndex;
-        if (
-          typeof iCI === "number" &&
-          iCI >= 0 &&
-          item.list &&
-          item.list.length &&
-          iCI <= item.list.length - 1
-        ) {
-          return Math.round(iCI);
-        }
-        return 0;
-      });
-    },
-    // 创建dom变化监听
-    _createDomObserver() {
-      return new window.MutationObserver(mutations => {
-        mutations.forEach(mutation => {
-          if (mutation.type === "attributes") {
-            const elDisplay = this.$el.style.display;
-            if (
-              elDisplay !== "none" &&
-              this.supInfo.lastStyleDisplay !== elDisplay
-            ) {
-              this.supInfo.lastStyleDisplay = elDisplay;
-              this.$nextTick(this.getGroupsRectList());
-            }
-          }
-        });
-      });
-    },
-    _safeGetGroupRectList() {
-      this.supInfo.getRectTimeoutId &&
-        clearTimeout(this.supInfo.getRectTimeoutId);
-      this.supInfo.getRectTimeoutId = setTimeout(() => {
-        this.getGroupsRectList();
-      }, 200);
-    },
-    // 注册相关事件
-    _eventsRegister() {
-      const handleEventLayer = this.$refs.smoothHandleLayer;
-      if (handleEventLayer) {
-        this._addEventsForElement(handleEventLayer);
-      }
-    },
-    // 添加手势事件
-    _addEventsForElement(el) {
-      const _ = this.dragInfo.isTouchable;
-      const eventHandlerList = [
-        { name: _ ? "touchstart" : "mousedown", handler: this._handleStart },
-        { name: _ ? "touchmove" : "mousemove", handler: this._handleMove },
-        { name: _ ? "touchend" : "mouseup", handler: this._handleEnd },
-        { name: _ ? "touchcancel" : "mouseleave", handler: this._handleCancel }
-      ];
-      // 给遮罩层添加事件监听
-      eventHandlerList.forEach((item, index) => {
-        el.removeEventListener(item.name, item.handler, false);
-        el.addEventListener(item.name, item.handler, false);
-      });
-    },
-    _triggerMiddleLayerGroupClick(gIndex) {
-      const data = this.data;
-      if (
-        typeof gIndex === "number" &&
-        typeof data[gIndex].onClick === "function"
-      ) {
-        data[gIndex].onClick(gIndex, this.currentIndexList[gIndex]);
-      }
-    },
-    _handleEventClick(ev) {
-      const gIndex = this._getGroupIndexBelongsEvent(ev);
-      switch (ev.target.dataset.type) {
-        case "top":
-          this._triggerAboveLayerClick(ev, gIndex);
-          break;
-        case "middle":
-          this._triggerMiddleLayerClick(ev, gIndex);
-          break;
-        case "bottom":
-          this._triggerBelowLayerClick(ev, gIndex);
-          break;
-        default:
-      }
-    },
-    _triggerAboveLayerClick(ev, gIndex) {
-      const movedIndex = this.currentIndexList[gIndex] + 1;
-      this.$set(this.currentIndexList, gIndex, movedIndex);
-      this._correctionCurrentIndex(ev, gIndex);
-    },
-    _triggerMiddleLayerClick(ev, gIndex) {
-      this._triggerMiddleLayerGroupClick(gIndex);
-    },
-    _triggerBelowLayerClick(ev, gIndex) {
-      const movedIndex = this.currentIndexList[gIndex] - 1;
-      this.$set(this.currentIndexList, gIndex, movedIndex);
-      this._correctionCurrentIndex(ev, gIndex);
-    },
-    _getGroupIndexBelongsEvent(ev) {
-      const touchInfo = this._getTouchInfo(ev);
-      for (let i = 0; i < this.groupsRectList.length; i++) {
-        const item = this.groupsRectList[i];
-        if (item.left < touchInfo.pageX && touchInfo.pageX < item.right) {
-          return i;
-        }
-      }
-      return null;
-    },
-    _getTouchInfo(ev) {
-      return this.dragInfo.isTouchable
-        ? ev.changedTouches[0] || ev.touches[0]
-        : ev;
-    },
-    _handleStart(ev) {
-      if (ev.cancelable) {
-        ev.preventDefault();
-        ev.stopPropagation();
-      }
-      const touchInfo = this._getTouchInfo(ev);
-      this.dragInfo.startPageY = touchInfo.pageY;
-      if (!this.dragInfo.isTouchable) {
-        this.dragInfo.isMouseDown = true;
-      }
-    },
-    _handleMove(ev) {
-      if (ev.cancelable) {
-        ev.preventDefault();
-        ev.stopPropagation();
-      }
-      if (this.dragInfo.isTouchable || this.dragInfo.isMouseDown) {
-        this.dragInfo.isDragging = true;
-        this._setCurrentIndexOnMove(ev);
-      }
-    },
-    _handleEnd(ev) {
-      if (ev.cancelable) {
-        ev.preventDefault();
-        ev.stopPropagation();
-      }
-      if (!this.dragInfo.isDragging) {
-        this._handleEventClick(ev);
-      }
-      this.dragInfo.isDragging = false;
-      this.dragInfo.isMouseDown = false;
-      this._correctionAfterDragging(ev);
-    },
-    _handleCancel(ev) {
-      if (ev.cancelable) {
-        ev.preventDefault();
-        ev.stopPropagation();
-      }
-      if (this.dragInfo.isTouchable || this.dragInfo.isMouseDown) {
-        this._correctionAfterDragging(ev);
-        this.dragInfo.isMouseDown = false;
-        this.dragInfo.isDragging = false;
-      }
-    },
-    _setCurrentIndexOnMove(ev) {
-      const touchInfo = this._getTouchInfo(ev);
-      if (this.dragInfo.groupIndex === null) {
-        this.dragInfo.groupIndex = this._getGroupIndexBelongsEvent(ev);
-      }
-      const gIndex = this.dragInfo.groupIndex;
-      if (
-        typeof gIndex === "number" &&
-        (this.data[gIndex].divider || !this.data[gIndex].list)
-      ) {
+    initDate() {
+      this.yearValue = CurrentYear;
+      this.monthValue = MouthList[CurrnetMonth];
+      this.dayValue = CurrentDay;
+      if (this.wheelListLen === 2) {
+        this.date = `${this.yearValue} / ${this.monthValue}`
         return;
       }
-      const moveCount = (this.dragInfo.startPageY - touchInfo.pageY) / 30;
-      const movedIndex = this.currentIndexList[gIndex] + moveCount;
-      this.$set(this.currentIndexList, gIndex, movedIndex);
-      this.dragInfo.startPageY = touchInfo.pageY;
+      this.date = `${this.yearValue} / ${this.monthValue} / ${this.dayValue}`;
+      this.$emit('change', this.date);
     },
-    _correctionAfterDragging(ev) {
-      const gIndex = this.dragInfo.groupIndex;
-      this._correctionCurrentIndex(ev, gIndex);
-      this.dragInfo.groupIndex = null;
-      this.dragInfo.startPageY = null;
+    cancel() {
+      this.initDate();
     },
-    _correctionCurrentIndex(ev, gIndex) {
-      let timer = setTimeout(() => {
-        if (
-          typeof gIndex === "number" &&
-          this.data[gIndex].divider !== true &&
-          this.data[gIndex].list.length > 0
-        ) {
-          const unsafeGroupIndex = this.currentIndexList[gIndex];
-          let movedIndex = unsafeGroupIndex;
-          if (unsafeGroupIndex > this.data[gIndex].list.length - 1) {
-            movedIndex = this.data[gIndex].list.length - 1;
-          } else if (unsafeGroupIndex < 0) {
-            movedIndex = 0;
-          }
-          movedIndex = Math.round(movedIndex);
-          this.$set(this.currentIndexList, gIndex, movedIndex);
-          if (movedIndex !== this.lastCurrentIndexList[gIndex]) {
-            this.change(gIndex, movedIndex);
-          }
-          this.lastCurrentIndexList = [].concat(this.currentIndexList);
-        }
-        clearInterval(timer);
-        timer = null;
-      }, 100);
-    },
-    _isCurrentItem(gIndex, iIndex) {
-      return this.currentIndexList[gIndex] === iIndex;
-    },
-    _getItemStyle(gIndex, iIndex) {
-      // 一下滚动的角度根据实际情况可以进行调整
-      const gapCount = this.currentIndexList[gIndex] - iIndex;
-      if (Math.abs(gapCount) < 3) {
-        let rotateStyle = {
-          transform: `rotateX(${gapCount * 23}deg) translate3d(0, 0, 90px)`
-        };
-        if (!this.dragInfo.isDragging) {
-          rotateStyle = {
-            ...rotateStyle,
-            transition: `transform 150ms ease-out`
-          };
-        }
-        return rotateStyle;
+    done() {
+      if (this.wheelListLen === 2) {
+        this.date = `${this.yearValue} / ${this.monthValue}`
+        return;
       }
-      // 一下逻辑时不会执行 后期根据实际需求进行调整
-      if (gapCount > 0) {
-        return { transform: "rotateX(100deg) translate3d(0, 0, 90px)" };
+      this.date = `${this.yearValue} / ${this.monthValue} / ${this.dayValue}`;
+      this.$emit('change', this.date);
+    },
+    change(gIndex, iIndex) {
+      if (gIndex === 0) {
+        this.yearValue = this.wheelList[gIndex].list[iIndex].value;
+        (this.wheelListLen === 3) && this.cualDaysChange(gIndex, iIndex, this.createDay(this.yearValue, this.monthValue));
+      } else if (gIndex === 1){
+        this.monthValue = this.wheelList[gIndex].list[iIndex].value;
+        // 跟据选择的年份和月份来显示对应的月的天数
+        (this.wheelListLen === 3) && this.cualDaysChange(gIndex, iIndex, this.createDay(this.yearValue, this.monthValue));
       } else {
-        return { transform: "rotateX(-100deg) translate3d(0, 0, 90px)" };
+        this.dayValue = this.wheelList[gIndex].list[iIndex].value;
       }
+    },
+    cualDaysChange(gIndex, iIndex, daysList) {
+      let newDayList = this.wheelList;
+      newDayList[gIndex].currentIndex = iIndex; // 设置当前手动选择的index
+      newDayList[2].list = daysList; // 跟新
+      if (daysList.length >= new Date().getDate()) {
+        // 如果当前选择的月份有当前天数就默认选择当前天数
+        newDayList[2].currentIndex = new Date().getDate() - 1;
+      } else {
+        // 否则选择当月的最后天
+        newDayList[2].currentIndex = daysList.length - 1;
+      }
+      this.wheelList = newDayList;
+      this.$refs.smoothPicker.getInitialCurrentIndexList();
+      this.$refs.smoothPicker.setGroupData(2, newDayList[2]);
+      this.$refs.smoothPicker.getGroupsRectList();
+    },
+    cearteYearList() {
+      let _yearList = [];
+      let _startYear = 1950;
+      let _currentYear = CurrentYear;
+      while (_startYear <= _currentYear) {
+        _yearList.push({ value: _startYear });
+        _startYear += 1;
+      }
+      return _yearList;
+    },
+    createMouth() {
+      let _mouthList = [];
+      let _i = 1;
+      while (_i <= 12) {
+        _mouthList.push({ value: _i });
+        _i += 1;
+      }
+      return _mouthList;
+    },
+    createDay(year, mouth) {
+      let _currentYear = year || CurrentYear;
+      let _currnetMonth = mouth || (CurrnetMonth + 1);
+      let _arr31 = [1,3,5,7,8,10,12];
+      let _arr30 = [4,6,9,11];
+      let _days = [];
+      if (_arr31.includes(_currnetMonth)) {
+        _days = this.cerateDayList(31);
+      }
+      if (_arr30.includes(_currnetMonth)) {
+        _days = this.cerateDayList(30);
+      }
+      if (_currentYear % 4 === 0 && _currnetMonth === 2) {
+        _days = this.cerateDayList(29);
+      }
+      if (_currentYear % 4 !== 0 && _currnetMonth === 2) {
+        _days = this.cerateDayList(28);
+      }
+      return _days;
+    },
+    cerateDayList(num) {
+      let _dayList = [];
+      let _i = 1;
+      while (_i <= num) {
+        _dayList.push({ value: _i });
+        _i += 1;
+      }
+      return _dayList;
     }
   }
 };
 </script>
-<style lang="scss" scoped>
-.smooth-picker {
-  font-size: 16px;
-  height: 150px;
-  position: relative;
-  background-color: #fff;
-  overflow: hidden;
-}
-.smooth-group {
-  text-align: center;
-}
-.smooth-list {
-  position: relative;
-  top: 60px;
-  height: 100px;
-  width: 100%;
-  .smooth-item {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 30px;
-    line-height: 30px;
-    font-size: 16px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    display: block;
-    text-align: center;
-    will-change: transform; // 告知浏览器元的的变化
-    contain: strict; // 将规则应用于当前元素
-  }
-}
 
-.smooth-handle-layer {
-  position: absolute;
-  width: 100%;
-  height: 150px;
+<style scoped lang="scss">
+.wheel-select-wrapper {
+  position: fixed;
+  bottom: 0;
   left: 0;
   right: 0;
-  top: -1px;
-  bottom: -1px;
-  display: flex;
-  flex-direction: column;
-  z-index: 100;
-  .smooth-top {
-    border-bottom: 1px solid #c8c7cc;
-    background: linear-gradient(180deg, #fff 0%, hsla(0, 0%, 100%, 0.2));
-    -webkit-transform: translateZ(90px);
-    transform: translateZ(90px);
+  z-index: 15;
+  height: 194px;
+  background: #fff;
+  .wheel-title {
+    height: 44px;
+    line-height: 44px;
+    padding: 0 16px;
+    border-bottom: 1px solid rgba(245, 245, 245, 1);
   }
-
-  .smooth-middle {
-    height: 30px;
+  .btn {
+    font-size: 14px;
+    font-family: Roboto-Regular, Roboto;
+    font-weight: 400;
   }
-
-  .smooth-bottom {
-    border-top: 1px solid #c8c7cc;
-    background: linear-gradient(0deg, #fff 0%, hsla(0, 0%, 100%, 0.1));
-    -webkit-transform: translateZ(90px);
-    transform: translateZ(90px);
+  .btn-cancel {
+    color: rgba(191, 191, 191, 1);
+  }
+  .btn-done {
+    color: rgba(54, 146, 245, 1);
   }
 }
 
-.flex {
-  display: -webkit-flex;
-  display: -ms-flexbox;
-  display: flex;
+.wheelselect-enter-active {
+  animation: wheelselect-in-bottom-left 0.1s;
 }
-
-.direction-column {
-  -webkit-flex-direction: column;
-  -ms-flex-direction: column;
-  flex-direction: column;
+.wheelselect-leave-active {
+  animation: wheelselect-out-bottom-left 0.1s;
 }
-
-.direction-row {
-  -webkit-flex-direction: row;
-  -ms-flex-direction: row;
-  flex-direction: row;
+@keyframes wheelselect-in-bottom-left {
+  0% {
+    bottom: -180px;
+  }
+  50% {
+    bottom: -90px;
+  }
+  100% {
+    bottom: 0;
+  }
 }
-
-.flex-1 {
-  flex: 1;
+@keyframes wheelselect-out-bottom-left {
+  0% {
+    bottom: 0;
+  }
+  50% {
+    bottom: -9px;
+  }
+  100% {
+    bottom: -180px;
+  }
 }
 </style>
