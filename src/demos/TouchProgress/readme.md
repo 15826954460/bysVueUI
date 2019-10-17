@@ -1,7 +1,7 @@
 #### 组件使用说明
 
 #### 效果演示
-<img src="../../assets/gif/touch-progress.gif" width="720"/>
+<img src="../../assets/gif/touch-progress.gif" width="800"/>
 
 ##### step
 
